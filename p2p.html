@@ -48,8 +48,36 @@
 				peer_id = id;
 
 				//connect to socket server (see function below)
-				// connectSocket();
+				connectSocket();
+		});
+
+		// step two : connects to the socket server
+		var connectSocket = function(){
+
+			socket = io.connect('/');
+
+			socket.on('connect', function(){
+				console.log("sending out my peer id");
+				socket.emit("peer_id", peer_id);
 			});
+
+			// Receive other peer ids
+			socket.on('peer_id_server', function (data){
+				console.log("Got a new peer from server: " + data);
+
+				// call them with our stream
+				console.log("Calling peer: " + data);
+				var call = peer.call(data, my_stream);
+
+				call.on('stream', function(remoteStream){
+					console.log("Got remote stream!");
+					var ovideoElement = document.createElement('video');
+					ovideoElement.src = window.URL.createObjectURL(remoteStream) || remoteStream;
+					ovideoElement.play();
+					document.body.appendChild(ovideoElement);
+				});
+			});
+		};
 
 			
 			// on receiving a call ... 
@@ -60,66 +88,21 @@
 				incoming_call.answer(my_stream);
 
 				// when you receive a stream from an incoming call, place it in a video div
-				incoming_call.on('stream', function(stream){
+				incoming_call.on('stream', function(remoteStream){
 					console.log("Incoming stream ...")
 					var ovideoElement = document.createElement('video');
-					ovideoElement.src = window.URL.createObjectURL(stream) || remoteStream;
-					document.body.appendChild(ovideoElement);
-					ovideoElement.play();					
+					ovideoElement.src = window.URL.createObjectURL(remoteStream) || remoteStream;
+					ovideoElement.play();
+					document.body.appendChild(ovideoElement);					
 				});
 			});
 		};
-
-		function makeCall() {
-			var whoToCall = document.getElementById('peer_id_txt').value;
-			console.log("calling: " + whoToCall);
-			var call = peer.call(whoToCall, my_stream);
-			call.on('stream',
-				function(remoteStream) {  // we receive a getUserMedia stream from the remote caller
-					// And attach it to a video object
-					var ovideoElement = document.createElement('video');
-					//document.getElementById('othervideo');
-					ovideoElement.src = window.URL.createObjectURL(remoteStream) || remoteStream;
-					ovideoElement.play();
-					document.body.appendChild(ovideoElement);
-			});
-		}
-
-		
-		//connects to the socket server
-		// var connectSocket = function(){
-
-		// 	socket = io.connect('/');
-
-		// 	socket.on('connect', function(){
-		// 		console.log("sending out my peer id");
-		// 		socket.emit("peer_id", peer_id);
-		// 	});
-
-		// 	// Receive other peer ids
-		// 	socket.on('peer_id_server', function (data){
-		// 		console.log("Got a new peer: " + data);
-
-		// 		// call them with our stream
-		// 		console.log("Calling peer: " + data);
-		// 		var call = peer.call(data, my_stream);
-
-		// 		call.on('stream', function(remoteStream){
-		// 			console.log("Got remote stream!");
-		// 			var ovideoElement = document.createElement('video');
-		// 			ovideoElement.src = window.URL.createObjectURL(remoteStream) || remoteStream;
-		// 			ovideoElement.play();
-		// 		});
-		// 	});
-		// };
 
 		window.addEventListener('load', init);
 
 		</script>
 	</head>
 	<body>
-		<input type="text" value="Peer ID to Call" id="peer_id_txt">
-		<input type="button" value="Call" onclick="makeCall()">
 		<video id="myVideo" width="320" height="240"></video>
 	</body>
 </html>
