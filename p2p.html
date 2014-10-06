@@ -1,5 +1,27 @@
 <html>
 	<head>
+		<title> MAKEUP PARTY!!</title>
+		
+		<style type="text/css">
+			body {
+				width: 90%;
+				margin: 0 auto;}
+			#content {overflow: auto;}
+			#canvasColumn{
+				width: 65%;
+				float: left;
+				margin: 1%;}
+			#feedColumn{
+				width: 35%;
+				float: right;
+				margin: 1%;
+			}
+			#feedColumn video{
+				width:220px; 
+				height: 140px;
+			}
+		</style>
+
 		<script src="http://cdn.peerjs.com/0.3/peer.min.js"></script>
 		<script src="/socket.io/socket.io.js"></script>
 
@@ -21,7 +43,7 @@
 			navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
 
 			if(navigator.getUserMedia){
-				navigator.getUserMedia({video: true, audio: true}, function(stream){
+				navigator.getUserMedia({video: true, audio: false}, function(stream){
 					my_stream = stream;
 					var videoElement = document.getElementById('myVideo');
 					videoElement.src = window.URL.createObjectURL(stream) || stream;
@@ -74,7 +96,7 @@
 					var ovideoElement = document.createElement('video');
 					ovideoElement.src = window.URL.createObjectURL(remoteStream) || remoteStream;
 					ovideoElement.play();
-					document.body.appendChild(ovideoElement);
+					document.getElementById("feedColumn").appendChild(ovideoElement);
 				});
 			});
 		};
@@ -93,7 +115,7 @@
 					var ovideoElement = document.createElement('video');
 					ovideoElement.src = window.URL.createObjectURL(remoteStream) || remoteStream;
 					ovideoElement.play();
-					document.body.appendChild(ovideoElement);					
+					document.getElementById("feedColumn").appendChild(ovideoElement);					
 				});
 			});
 		};
@@ -101,8 +123,25 @@
 		window.addEventListener('load', init);
 
 		</script>
+
 	</head>
 	<body>
-		<video id="myVideo" width="320" height="240"></video>
+
+		<div id="header">
+			<h1> MakeUp Party!!! </h1>
+		</div>
+		<div id="content">
+			<div id="canvasColumn">
+			Canvas Column
+			<canvas id="videoCanvas" style="z-index:1; position:absolute; left:0px; top0px;" width="400" height="300">Error.</canvas>
+
+			<canvas id="drawCanvas" style="z-index:2; position:absolute; left:0px; top0px;" width="400" height="300">Error.</canvas>
+			</div>
+
+			<div id="feedColumn">
+			Feed Column
+			<video id="myVideo"></video>
+			</div>
+		</div>
 	</body>
 </html>
