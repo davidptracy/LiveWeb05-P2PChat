@@ -1,7 +1,8 @@
 <html>
 	<head>
 		<title> MAKEUP PARTY!!</title>
-		
+
+		<!-- Styling for the document  -->
 		<style type="text/css">
 			body {
 				width: 90%;
@@ -22,28 +23,38 @@
 			}
 		</style>
 
+		<!-- PeerJS library and socket.io library -->
 		<script src="http://cdn.peerjs.com/0.3/peer.min.js"></script>
 		<script src="/socket.io/socket.io.js"></script>
 
 		<script type="text/javascript">
 
-		// get user media
-		var my_stream = null;
+		// global variables - these will be used globally in the script
 
-		// webRTC peer and peer id
+		// this will eventurally hold 'this' computer's video stream from the webcam so that it 
+		// can be passed to other clients or to a server
+ 		var my_stream = null;
+
+		// empty variables for the peer object and the peer identifier string
 		var peer = null;
 		var peer_id = null;
 
-		// socket server
+		// empty variable for the socket object
 		var socket = null;
 
+		// empty variables for the video canvas and its context (HTML5 canvas)
 		var videoCanvas = null;
 		var videoContext = null;
 
+		// empty varibles used to toggle countdown functionality for the make over
 		var drawingCountdown = null;
 		var countdownOn = null;
 
 
+		// 1. This function is initialized with the document completely loads. 
+		// 2. Gets user media (webCam video) and places it into a variable that can be passed around to other clients 
+		//    or servers. After getting user media, init connects to the PeerJS server.
+		// 3. This is also where the video canvas and context are defined as well as drawing methods and event listeners.
 		var init = function(){
 
 			window.URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
@@ -98,7 +109,11 @@
 			});
 		};
 
-		// step one : connect to the peerjs server
+		// 1. this function connects us to the PeerJS server using a unique API key
+		// 2. it then grabs a Peer ID from the server that can be used to make and receive calls
+		// 3. after it grabs a Peer ID, it emits that ID to a socket server, so that the ID can be broadcast to others
+		// 4. there is also a peer.on('call'...) event that answers a call with 'this' stream and grabs the outside stream
+		//    and appends it to the HTML document
 		var peerConnect = function(){
 
 			// create a new PeerJS object
@@ -113,126 +128,6 @@
 				connectSocket();
 			});
 
-			// step two : connects to the socket server
-			var connectSocket = function(){
-
-				socket = io.connect('/');
-
-				// Connection event
-				socket.on('connect', function(){
-					console.log("sending out my peer id");
-					socket.emit("peer_id", peer_id);
-				});
-
-				// Receive other peer ids
-				socket.on('peer_id_server', function (data){
-					console.log("Got a new peer from server: " + data);
-
-					// call them with our stream
-					console.log("Calling peer: " + data);
-					var call = peer.call(data, my_stream);
-
-					call.on('stream', function(remoteStream){
-						console.log("Got remote stream!");
-						var ovideoElement = document.createElement('video');
-						ovideoElement.src = window.URL.createObjectURL(remoteStream) || remoteStream;
-						ovideoElement.id = data;
-						ovideoElement.play();
-						document.getElementById("feedColumn").appendChild(ovideoElement);
-					});
-				});
-
-				// countDown event from the socket.io server
-				socket.on('countdownEvent01', function(count){
-					console.log(count);
-
-					// draw the count to the canvas
-					var c=document.getElementById("videoCanvas");
-					var ctx=c.getContext("2d");
-
-					ctx.clearRect(0, 0, c.width, c.height);
-					ctx.font="20px Georgia";
-					ctx.fillText(count,10,50);
-
-				});
-
-				// event to grab images from the canvas
-				socket.on('grabImages', function(){
-
-					var dataUrl = videoCanvas.toDataURL('image/webp', 1);
-					// document.getElementById('imagefile').src = dataUrl;
-					socket.emit('grabbedImage', dataUrl);
-
-				});
-
-				//remove video of the user who left
-				socket.on('peer_disconnect', function(data){
-					console.log("removing video with ID" + data);
-					var theVideo =document.getElementById(data);
-					theVideo.parentNode.removeChild(theVideo);
-				});
-
-				// select a random user and transmit their photo to the canvas
-				socket.on('randomSelection', function(random_id){
-					console.log("got id: " + random_id);
-					if (random_id == peer_id){
-						console.log("IT'S ME!");
-
-						var video = document.getElementById('myVideo');
-
-						videoContext.drawImage(video,0,0,videoCanvas.width,videoCanvas.height);
-
-						var makeOverPhoto = videoCanvas.toDataURL('image/webp', 1);
-						socket.emit('randomPhoto', makeOverPhoto);
-					
-						console.log("sent portrait");
-
-						countdownOn = true;
-						drawingCountdown = 20;
-
-						countdown();
-					};
-				});
-
-				// if the server sends a makeOver image then draw it to the canvas
-				socket.on('makeOverTime', function(imageFromServer){
-
-					// var image = imageFromServer;
-
-					console.log("received image from server");
-
-					document.getElementById('imagefile').src = imageFromServer;
-					videoContext.drawImage(document.getElementById('imagefile'),0,0,videoCanvas.width,videoCanvas.height);
-
-				});
-
-				socket.on('slideshow', function(imageFromServer){
-
-					console.log("received slideshow image!");
-
-					document.getElementById('imagefile').src = imageFromServer;
-					videoContext.drawImage(document.getElementById('imagefile'),0,0,videoCanvas.width,videoCanvas.height);
-
-				})
-
-				// 20 second countdown for makeUp to be drawn, when 20 seconds is up, send a signal to the server to grab all canvas images from clients
-				var countdown = function(){
-
-					if (countdownOn){
-						drawingCountdown --;
-						console.log("Drawing Countdown : " + drawingCountdown);
-
-						if(drawingCountdown == 0){
-							countdownOn = false;
-							count = 20;
-							socket.emit('drawingCountdown','');
-						}
-
-						setTimeout(countdown, 1000);
-					}
-				}
-			};
-				
 			// on receiving a call ... 
 			peer.on('call', function(incoming_call) {
 				console.log("You got a new call");
@@ -249,6 +144,129 @@
 					document.getElementById("feedColumn").appendChild(ovideoElement);					
 				});
 			});
+		};
+
+		// 1. connects to the node server and emits 'this' peer_id
+		// 2. when the server emits the peer_id of another client, 'this' client calls that client and 
+		//    gets its stream
+		// 3. socket events follow, see description above each event
+		var connectSocket = function(){
+
+			socket = io.connect('/');
+
+			// Connection event
+			socket.on('connect', function(){
+				console.log("sending out my peer id");
+				socket.emit("peer_id", peer_id);
+			});
+
+			// Receive other peer ids
+			socket.on('peer_id_server', function (data){
+				console.log("Got a new peer from server: " + data);
+
+				// call them with our stream
+				console.log("Calling peer: " + data);
+				var call = peer.call(data, my_stream);
+
+				// when we get a remote stream, append it to our document
+				call.on('stream', function(remoteStream){
+					console.log("Got remote stream!");
+					var ovideoElement = document.createElement('video');
+					ovideoElement.src = window.URL.createObjectURL(remoteStream) || remoteStream;
+					ovideoElement.id = data;
+					ovideoElement.play();
+					document.getElementById("feedColumn").appendChild(ovideoElement);
+				});
+			});
+
+			// countDown event from the socket.io server
+			socket.on('countdownEvent01', function(count){
+				console.log(count);
+
+				// draw the count to the canvas
+				var c=document.getElementById("videoCanvas");
+				var ctx=c.getContext("2d");
+
+				ctx.clearRect(0, 0, c.width, c.height);
+				ctx.font="20px Georgia";
+				ctx.fillText(count,10,50);
+
+			});
+
+			// event to grab images from the canvas
+			socket.on('grabImages', function(){
+
+				var dataUrl = videoCanvas.toDataURL('image/webp', 1);
+				socket.emit('grabbedImage', dataUrl);
+
+			});
+
+			//remove video of the user who left
+			socket.on('peer_disconnect', function(data){
+				console.log("removing video with ID" + data);
+				var theVideo =document.getElementById(data);
+				theVideo.parentNode.removeChild(theVideo);
+			});
+
+			// the server selects a random user and transmits their photo to the all canvases 
+			socket.on('randomSelection', function(random_id){
+				console.log("got id: " + random_id);
+				if (random_id == peer_id){
+					console.log("IT'S ME!");
+
+					var video = document.getElementById('myVideo');
+
+					videoContext.drawImage(video,0,0,videoCanvas.width,videoCanvas.height);
+
+					var makeOverPhoto = videoCanvas.toDataURL('image/webp', 1);
+					socket.emit('randomPhoto', makeOverPhoto);
+				
+					console.log("sent portrait");
+
+					countdownOn = true;
+					drawingCountdown = 20;
+
+					countdown();
+				};
+			});
+
+			// if the server sends a makeOver image then draw it to the canvas
+			socket.on('makeOverTime', function(imageFromServer){
+
+				// var image = imageFromServer;
+
+				console.log("received image from server");
+
+				document.getElementById('imagefile').src = imageFromServer;
+				videoContext.drawImage(document.getElementById('imagefile'),0,0,videoCanvas.width,videoCanvas.height);
+
+			});
+
+			socket.on('slideshow', function(imageFromServer){
+
+				console.log("received slideshow image!");
+
+				document.getElementById('imagefile').src = imageFromServer;
+				videoContext.drawImage(document.getElementById('imagefile'),0,0,videoCanvas.width,videoCanvas.height);
+
+			})
+
+			// 20 second countdown for makeUp to be drawn, when 20 seconds is up, send a signal to the server to grab all canvas images from clients
+			var countdown = function(){
+
+				if (countdownOn){
+					drawingCountdown --;
+					console.log("Drawing Countdown : " + drawingCountdown);
+
+					if(drawingCountdown == 0){
+						countdownOn = false;
+						count = 20;
+						socket.emit('drawingCountdown','');
+					}
+
+					setTimeout(countdown, 1000);
+				}
+			}
 		};
 
 		window.addEventListener('load', init);
