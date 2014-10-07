@@ -78,6 +78,7 @@
 
 			socket = io.connect('/');
 
+			// Connection event
 			socket.on('connect', function(){
 				console.log("sending out my peer id");
 				socket.emit("peer_id", peer_id);
@@ -95,10 +96,33 @@
 					console.log("Got remote stream!");
 					var ovideoElement = document.createElement('video');
 					ovideoElement.src = window.URL.createObjectURL(remoteStream) || remoteStream;
+					ovideoElement.id = data;
 					ovideoElement.play();
 					document.getElementById("feedColumn").appendChild(ovideoElement);
 				});
 			});
+
+			// countDown event from the socket.io server
+			socket.on('countdownEvent01', function(count){
+				console.log(count);
+
+				// draw the count to the canvas
+				var c=document.getElementById("videoCanvas");
+				var ctx=c.getContext("2d");
+
+				ctx.clearRect(0, 0, c.width, c.height);
+				ctx.font="20px Georgia";
+				ctx.fillText(count,10,50);
+
+			});
+
+			//remove video of the user who left
+			socket.on('peer_disconnect', function(data){
+				console.log("removing video with ID" + data);
+				var theVideo =document.getElementById(data);
+				theVideo.parentNode.removeChild(theVideo);
+			});
+
 		};
 
 			
@@ -140,6 +164,7 @@
 
 			<div id="feedColumn">
 			Feed Column
+			<br>
 			<video id="myVideo"></video>
 			</div>
 		</div>

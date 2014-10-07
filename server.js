@@ -27,6 +27,9 @@ var io = require('socket.io').listen(httpServer);
 // since io.sockets.clients() no longer works ??
 var connectedSockets = [];
 
+var fiveSecondCountDown = false;
+var count = 5;
+
 // register a callback function to run wehen we have an individual connection.
 // this is run for each individual user that connectedSockets
 io.sockets.on('connection', function (socket){
@@ -34,7 +37,7 @@ io.sockets.on('connection', function (socket){
 	console.log("We have a new client: " + socket.id);
 
 	// add to the connectedSockets array
-	connectedSockets.push(socket);
+	connectedSockets.push(socket); 
 
 	socket.on('peer_id', function (data){
 		console.log("Received: 'peer_id' " + data);
@@ -48,6 +51,8 @@ io.sockets.on('connection', function (socket){
 			console.log("loop: " + i + " " + connectedSockets[i].peer_id);
 		}
 
+		checkCountdown();
+
 		// tell everyone my peer_id
 		socket.broadcast.emit('peer_id_server', data);
 	});
@@ -56,5 +61,49 @@ io.sockets.on('connection', function (socket){
 		console.log("Client has disconnected");
 		var indexToRemove = connectedSockets.indexOf(socket);
 		connectedSockets.splice(indexToRemove, 1);
+
+		//tells all clients who disconnected
+		io.sockets.emit('peer_disconnect', socket.peer_id);
+
+		console.log("Users Connected : " + connectedSockets.length);
 	});
 });
+
+var checkCountdown = function(){
+	console.log("Users Connected : " + connectedSockets.length);
+
+	if (connectedSockets.length == 3){
+		console.log("The Countdown Begins");
+		fiveSecondCountDown = true;
+	}	
+	
+	countdown();
+}
+
+var countdown = function(){
+
+	if (fiveSecondCountDown){
+		count --;
+		console.log(count);
+		io.sockets.emit('countdownEvent01', count);
+
+
+		if(count == 0){
+			fiveSecondCountDown = false;
+			count = 5;
+		}
+
+		setTimeout(countdown, 1000);
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
