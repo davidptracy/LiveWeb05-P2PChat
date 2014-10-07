@@ -37,6 +37,10 @@
 		// socket server
 		var socket = null;
 
+		var videoCanvas = null;
+		var videoContext = null;
+
+
 		var init = function(){
 
 			window.URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
@@ -56,6 +60,9 @@
 					console.log('Failed to get local stream', err);
 				});
 			}
+
+			videoCanvas = document.getElementById('videoCanvas');
+			videoContext = videoCanvas.getContext('2d');
 		};
 
 		// step one : connect to the peerjs server
@@ -123,6 +130,38 @@
 				theVideo.parentNode.removeChild(theVideo);
 			});
 
+			// select a random user and transmit their photo to the canvas
+			socket.on('randomSelection', function(random_id){
+				console.log("got id: " + random_id);
+				if (random_id == peer_id){
+					console.log("IT'S ME!");
+
+					var video = document.getElementById('myVideo');
+
+					videoContext.drawImage(video,0,0,videoCanvas.width,videoCanvas.height);
+
+					var makeOverPhoto = videoCanvas.toDataURL('image/webp', 1);
+					socket.emit('randomPhoto', makeOverPhoto);
+				
+					console.log("sent portrait");
+				}
+			});
+
+			// if the server sends a makeOver image then draw it to the canvas
+			socket.on('makeOverTime', function(imageFromServer){
+
+				var image = imageFromServer;
+
+				// var c=document.getElementById("videoCanvas");
+				// var ctx=c.getContext("2d");
+
+				console.log("received image from server");
+
+				document.getElementById('imagefile').src = imageFromServer;
+				videoContext.drawImage(document.getElementById('imagefile'),0,0,videoCanvas.width,videoCanvas.height);
+
+			})
+
 		};
 
 			
@@ -168,5 +207,7 @@
 			<video id="myVideo"></video>
 			</div>
 		</div>
+
+		<img id="imagefile" style="display:none;">
 	</body>
 </html>

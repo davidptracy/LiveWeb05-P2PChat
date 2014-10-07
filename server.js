@@ -57,6 +57,14 @@ io.sockets.on('connection', function (socket){
 		socket.broadcast.emit('peer_id_server', data);
 	});
 
+	// receives a random photo from a client
+	socket.on('randomPhoto', function(image){
+
+		console.log("Received an image!");
+		socket.broadcast.emit('makeOverTime', image);
+
+	})
+
 	socket.on('disconnect', function(){
 		console.log("Client has disconnected");
 		var indexToRemove = connectedSockets.indexOf(socket);
@@ -80,6 +88,8 @@ var checkCountdown = function(){
 	countdown();
 }
 
+// this is the countdown function that transmits 
+
 var countdown = function(){
 
 	if (fiveSecondCountDown){
@@ -91,10 +101,22 @@ var countdown = function(){
 		if(count == 0){
 			fiveSecondCountDown = false;
 			count = 5;
+
+			selectRandomUser();
 		}
 
 		setTimeout(countdown, 1000);
 	}
+}
+
+
+// this function selects a random user and broadcasts their id to all clients 
+
+var selectRandomUser = function(){
+
+	var selector = Math.floor(Math.random() * 3);
+	io.sockets.emit('randomSelection', connectedSockets[selector].peer_id);
+
 }
 
 
