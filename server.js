@@ -34,7 +34,7 @@ var count = 5;
 
 var slideshowCounter = 0;
 
-var desiredUsers = 3;
+var desiredUsers = 2;
 
 // register a callback function to run wehen we have an individual connection.
 // this is run for each individual user that connectedSockets
@@ -96,7 +96,7 @@ io.sockets.on('connection', function (socket){
 		console.log("Client has disconnected");
 		var indexToRemove = connectedSockets.indexOf(socket);
 		connectedSockets.splice(indexToRemove, 1);
-
+		
 		//tells all clients who disconnected
 		io.sockets.emit('peer_disconnect', socket.peer_id);
 

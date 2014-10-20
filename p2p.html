@@ -50,6 +50,21 @@
 		var drawingCountdown = null;
 		var countdownOn = null;
 
+		//canvas drawing variables
+		var prevX = 0;
+		var prevY = 0;
+		var currX = 0;
+		var currY = 0;
+		var flag = false;
+		var dot_flag = false;
+
+		var lipTool = "lip";
+		var eyeTool = "eye";
+
+		var x = 'hotpink';
+		var y = 20;
+
+		var blush = false;
 
 		// 1. This function is initialized with the document completely loads. 
 		// 2. Gets user media (webCam video) and places it into a variable that can be passed around to other clients 
@@ -75,39 +90,126 @@
 				});
 			}
 
+			if(navigator.getUserMedia){
+				navigator.getUserMedia({video: false, audio: true}, function(stream){
+					my_audio = stream;
+					var audioElement = document.getElementById('my 	');
+					videoElement.src = window.URL.createObjectURL(stream) || stream;
+					videoElement.play();
+				
+					//connect to peer server
+					peerConnect();
+
+				}, function(err){
+					console.log('Failed to get local stream', err);
+				});
+			}
+
 			videoCanvas = document.getElementById('videoCanvas');
 			videoContext = videoCanvas.getContext('2d');
 
-			var x;
-			var y;
-			var px = 0;
-			var py = 0;
-			var canvasClick = false;
+			var w = videoCanvas.width;
+		    var h = videoCanvas.height;
 
-			videoCanvas.addEventListener('click', function(){
-				canvasClick = !canvasClick;
-			});
+		    dot_flag = false;
 
-			videoCanvas.addEventListener('mousemove', function(evt){
+		    videoCanvas.addEventListener("mousemove", function (e) {
+		        findxy('move', e)
+		    }, false);
+		    videoCanvas.addEventListener("mousedown", function (e) {
+		        findxy('down', e)
+		    }, false);
+		    videoCanvas.addEventListener("mouseup", function (e) {
+		        findxy('up', e)
+		    }, false);
+		    videoCanvas.addEventListener("mouseout", function (e) {
+		        findxy('out', e)
+		    }, false);
+		}
 
-				var canvasRect = videoCanvas.getBoundingClientRect();
-				
-				var x = evt.clientX - canvasRect.left;
-				var y = evt.clientY - canvasRect.top;
-				
-				if(canvasClick){
-					console.log(x, y);
-					videoContext.beginPath();
-					videoContext.moveTo(px, py);
-					videoContext.lineTo(x, y);
-					videoContext.strokeStyle = 'red';
-					videoContext.stroke();
+		function color(obj) {
+		    switch (obj.id) {
+		        case "#FF69B4":
+		            x = "rgba(255, 105, 80, 0.05)";
+		            blush = true;
+		            lipstick = false;
+		            eyeshadow = false;
+		            break;
+		        case "#DC143C":
+		            x = "rgba(220, 20, 60, 0.25)";
+		            blush = false;
+		            lipstick = true;
+		            eyeshadow = false;
+		            break;
+		        case "#483D8B":
+		            x = "rgba(72, 61, 139, 0.05)";
+		            blush = false;
+		            lipstick = false;
+		            eyeshadow = true;
+		            break;
+		        }
+		}
 
-					px = x;
-					py = y;
-				}
-			});
-		};
+		function draw() {
+		    videoContext.beginPath();
+		    videoContext.moveTo(prevX, prevY);
+		    // videoContext.globalAlpha = 0.25;
+		    videoContext.lineTo(currX, currY);
+		    videoContext.strokeStyle = x;
+
+		    if(blush){
+		    	videoContext.lineWidth = 20;
+		    }
+		    else if(lipstick){
+		    	videoContext.lineWidth = 20;		    }
+		    else{
+		    	videoContext.lineWidth = 10;
+		    }
+
+		    videoContext.lineJoin = videoContext.lineCap = 'round';  
+		    videoContext.shadowBlur = 20; 
+		    videoContext.shadowColor =x; 
+		    videoContext.stroke();
+		    videoContext.closePath();
+		}
+
+		var findxy = function (mou, e) {
+		    if (mou == 'down') {
+		        prevX = currX;
+		        prevY = currY;
+		        currX = e.clientX - videoCanvas.offsetLeft;
+		        currY = e.clientY - videoCanvas.offsetTop;
+		        flag = true;
+		        dot_flag = true;
+
+			        if (dot_flag) {
+			    	console.log("videoContext" + videoContext);
+			        videoContext.beginPath();
+			        videoContext.fillStyle = x;
+			        videoContext.fill();
+			        videoContext.closePath();
+			        videoContext.shadowBlur = 40; 
+			        dot_flag = false;
+			    }
+		    }
+
+		    
+
+		    if (mou == 'up' || mou == "out") {
+		        flag = false;
+		    }
+
+		    if (mou == 'move') {
+		        if (flag) {
+		            prevX = currX;
+		            prevY = currY;
+		            currX = e.clientX - videoCanvas.offsetLeft;
+		            currY = e.clientY - videoCanvas.offsetTop;
+		            draw();
+		        }
+		    }
+		}
+	
 
 		// 1. this function connects us to the PeerJS server using a unique API key
 		// 2. it then grabs a Peer ID from the server that can be used to make and receive calls
@@ -152,6 +254,7 @@
 		// 3. socket events follow, see description above each event
 		var connectSocket = function(){
 
+			// '/' connects to the same server that the page was served from
 			socket = io.connect('/');
 
 			// Connection event
@@ -224,7 +327,7 @@
 					console.log("sent portrait");
 
 					countdownOn = true;
-					drawingCountdown = 20;
+					drawingCountdown = 60;
 
 					countdown();
 				};
@@ -260,7 +363,7 @@
 
 					if(drawingCountdown == 0){
 						countdownOn = false;
-						count = 20;
+						count = 60;
 						socket.emit('drawingCountdown','');
 					}
 
@@ -280,9 +383,12 @@
 			<h1> MakeUp Party!!! </h1>
 		</div>
 		<div id="content">
+			<div style="position:absolute;top:10%;left:3%; z-index:2;">Makeup Box</div>
+		    <div style="position:absolute;top:13%;left:3%;width:80px;height:40px;background:#FF69B4; z-index:2;" id="#FF69B4" onclick="color(this)">Blush</div>
+		    <div style="position:absolute;top:17%;left:3%;width:80px;height:40px;background:#DC143C; z-index:2;" id="#DC143C" onclick="color(this)">Lipstick</div>
+		    <div style="position:absolute;top:21%;left:3%;width:80px;height:40px;background:#483D8B; z-index:2;" id="#483D8B" onclick="color(this)">Eyeshadow</div>
 			<div id="canvasColumn">
-			Canvas Column
-			<canvas id="videoCanvas" style="z-index:1; position:absolute; left:0px; top0px;" width="400" height="300">Error.</canvas>
+			<canvas id="videoCanvas" style="z-index:1; position:absolute; left:0px; top0px;" width="600" height="400">Error.</canvas>
 
 <!-- 			<canvas id="drawCanvas" style="z-index:2; position:absolute; left:0px; top0px;" width="400" height="300">Error.</canvas> -->
 			</div>
